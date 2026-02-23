@@ -4,6 +4,10 @@ All notable changes to TTT2 will be documented here. Inspired by [keep a changel
 
 ## Unreleased
 
+### Added
+
+- Added `plymeta:HasExternalGestureActive()` to check if an external gesture is active (by @mexikoedi)
+
 ### Changed
 
 - Made improvements to door destruction (by @TW1STaL1CKY)
@@ -21,6 +25,7 @@ All notable changes to TTT2 will be documented here. Inspired by [keep a changel
 - Fixed missing `limit_left` translation (by @mexikoedi)
 - Fixed `GetHeadshotMultiplier` nil value error (by @mexikoedi)
 - Fixed continuous use not working correctly with entities like health stations (by @saibotk)
+- Fixed thirdperson animations from third-party addons (by @mexikoedi)
 
 ### Removed / Breaking Changes
 

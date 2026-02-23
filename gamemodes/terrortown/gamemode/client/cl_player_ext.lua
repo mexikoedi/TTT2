@@ -1,10 +1,77 @@
 local net = net
+local CurTime = CurTime
 
 local plymeta = FindMetaTable("Player")
 if not plymeta then
     ErrorNoHaltWithStack("FAILED TO FIND PLAYER TABLE")
 
     return
+end
+
+-- use a dedicated slot if available to reduce collisions with third-party gesture addons
+local ttt2GestureSlot = GESTURE_SLOT_VCD or GESTURE_SLOT_CUSTOM
+
+-- safety padding to avoid one frame desync when external gestures end
+local extGestureDurationPadding = 0.1
+
+-- marks the end time of an externally started gesture on the player
+local function MarkExternalGesture(ply, sequence)
+    if not isnumber(sequence) or sequence < 0 then
+        return
+    end
+
+    local sequenceDuration = ply:SequenceDuration(sequence)
+
+    if not isnumber(sequenceDuration) or sequenceDuration <= 0 then
+        return
+    end
+
+    local endTime = CurTime() + sequenceDuration + extGestureDurationPadding
+
+    if endTime > (ply.ttt2ExternalGestureEndTime or 0) then
+        ply.ttt2ExternalGestureEndTime = endTime
+    end
+end
+
+-- wrap this once to track externally started gestures on all slots while ignoring TTT2 internal writes
+if not plymeta._ttt2WrappedAddVCDSequenceToGestureSlot and isfunction(plymeta.AddVCDSequenceToGestureSlot) then
+    plymeta._ttt2WrappedAddVCDSequenceToGestureSlot = true
+
+    local plymeta_old_AddVCDSequenceToGestureSlot = plymeta.AddVCDSequenceToGestureSlot
+
+    function plymeta:AddVCDSequenceToGestureSlot(slot, sequence, delay, autokill)
+        -- depth > 0 means this call originates from TTT2's AnimApplyGesture and should not count as external
+        if (self._ttt2InternalGestureWriteDepth or 0) <= 0 then
+            MarkExternalGesture(self, sequence)
+        end
+
+        return plymeta_old_AddVCDSequenceToGestureSlot(self, slot, sequence, delay, autokill)
+    end
+end
+
+if not plymeta._ttt2WrappedAnimRestartGesture and isfunction(plymeta.AnimRestartGesture) then
+    plymeta._ttt2WrappedAnimRestartGesture = true
+
+    local plymeta_old_AnimRestartGesture = plymeta.AnimRestartGesture
+
+    function plymeta:AnimRestartGesture(slot, activity, autokill)
+        -- some addons use AnimRestartGesture -> map activity to sequence to track duration
+        if (self._ttt2InternalGestureWriteDepth or 0) <= 0 and isnumber(activity) and activity >= 0 then
+            local sequence = self:SelectWeightedSequence(activity)
+
+            MarkExternalGesture(self, sequence)
+        end
+
+        return plymeta_old_AnimRestartGesture(self, slot, activity, autokill)
+    end
+end
+
+---
+-- Returns whether an external gesture is currently active on this player.
+-- @return boolean
+-- @realm client
+function plymeta:HasExternalGestureActive()
+    return (self.ttt2ExternalGestureEndTime or 0) > CurTime()
 end
 
 ---
@@ -15,8 +82,11 @@ end
 -- @see https://wiki.facepunch.com/gmod/Player:AnimRestartGesture
 -- @see https://wiki.facepunch.com/gmod/Player:AnimSetGestureWeight
 function plymeta:AnimApplyGesture(act, weight)
-    self:AnimRestartGesture(GESTURE_SLOT_CUSTOM, act, true) -- true = autokill
-    self:AnimSetGestureWeight(GESTURE_SLOT_CUSTOM, weight)
+    -- prevent our own gesture writes from being treated as external
+    self._ttt2InternalGestureWriteDepth = (self._ttt2InternalGestureWriteDepth or 0) + 1
+    self:AnimRestartGesture(ttt2GestureSlot, act, true) -- true = autokill
+    self:AnimSetGestureWeight(ttt2GestureSlot, weight)
+    self._ttt2InternalGestureWriteDepth = math.max(0, self._ttt2InternalGestureWriteDepth - 1)
 end
 
 local function MakeSimpleRunner(act)
@@ -37,6 +107,11 @@ local act_runner = {
     -- ear grab needs weight control
     -- sadly it's currently the only one
     [ACT_GMOD_IN_CHAT] = function(ply, w)
+        -- prevent voice chat ear grab gesture from interfering with active third-party gestures
+        if ply:HasExternalGestureActive() then
+            return 0
+        end
+
         local dest = ply:IsSpeaking() and 1 or 0
 
         w = math.Approach(w, dest, FrameTime() * 10)
