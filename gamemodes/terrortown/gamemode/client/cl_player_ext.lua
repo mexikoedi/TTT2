@@ -42,13 +42,21 @@ then
 
     local plymeta_old_AddVCDSequenceToGestureSlot = plymeta.AddVCDSequenceToGestureSlot
 
-    function plymeta:AddVCDSequenceToGestureSlot(slot, sequence, delay, autokill)
+    ---
+    -- Wrapped version of @{Player:AddVCDSequenceToGestureSlot} to track external gesture activity.
+    -- @param number slot The gesture slot.
+    -- @param number sequence The sequence id.
+    -- @param number cycle Cycle to start the animation. Value must be ranging from 0 to 1.
+    -- @param boolean autokill Whether the gesture should stop automatically.
+    -- @realm client
+    -- @see https://wiki.facepunch.com/gmod/Player:AddVCDSequenceToGestureSlot
+    function plymeta:AddVCDSequenceToGestureSlot(slot, sequence, cycle, autokill)
         -- depth > 0 means this call originates from TTT2's AnimApplyGesture and should not count as external
         if (self._ttt2InternalGestureWriteDepth or 0) <= 0 then
             MarkExternalGesture(self, sequence)
         end
 
-        return plymeta_old_AddVCDSequenceToGestureSlot(self, slot, sequence, delay, autokill)
+        return plymeta_old_AddVCDSequenceToGestureSlot(self, slot, sequence, cycle, autokill)
     end
 end
 
@@ -57,6 +65,13 @@ if not plymeta._ttt2WrappedAnimRestartGesture and isfunction(plymeta.AnimRestart
 
     local plymeta_old_AnimRestartGesture = plymeta.AnimRestartGesture
 
+    ---
+    -- Wrapped version of @{Player:AnimRestartGesture} to track external gesture activity.
+    -- @param number slot The gesture slot.
+    -- @param ACT activity The @{ACT} that should be played.
+    -- @param boolean autokill Whether the gesture should stop automatically.
+    -- @realm client
+    -- @see https://wiki.facepunch.com/gmod/Player:AnimRestartGesture
     function plymeta:AnimRestartGesture(slot, activity, autokill)
         -- some addons use AnimRestartGesture -> map activity to sequence to track duration
         if
