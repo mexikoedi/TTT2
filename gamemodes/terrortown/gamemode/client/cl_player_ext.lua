@@ -34,7 +34,10 @@ local function MarkExternalGesture(ply, sequence)
 end
 
 -- wrap this once to track externally started gestures on all slots while ignoring TTT2 internal writes
-if not plymeta._ttt2WrappedAddVCDSequenceToGestureSlot and isfunction(plymeta.AddVCDSequenceToGestureSlot) then
+if
+    not plymeta._ttt2WrappedAddVCDSequenceToGestureSlot
+    and isfunction(plymeta.AddVCDSequenceToGestureSlot) 
+then
     plymeta._ttt2WrappedAddVCDSequenceToGestureSlot = true
 
     local plymeta_old_AddVCDSequenceToGestureSlot = plymeta.AddVCDSequenceToGestureSlot
@@ -49,14 +52,21 @@ if not plymeta._ttt2WrappedAddVCDSequenceToGestureSlot and isfunction(plymeta.Ad
     end
 end
 
-if not plymeta._ttt2WrappedAnimRestartGesture and isfunction(plymeta.AnimRestartGesture) then
+if
+    not plymeta._ttt2WrappedAnimRestartGesture
+    and isfunction(plymeta.AnimRestartGesture) 
+then
     plymeta._ttt2WrappedAnimRestartGesture = true
 
     local plymeta_old_AnimRestartGesture = plymeta.AnimRestartGesture
 
     function plymeta:AnimRestartGesture(slot, activity, autokill)
         -- some addons use AnimRestartGesture -> map activity to sequence to track duration
-        if (self._ttt2InternalGestureWriteDepth or 0) <= 0 and isnumber(activity) and activity >= 0 then
+        if
+            (self._ttt2InternalGestureWriteDepth or 0) <= 0
+            and isnumber(activity)
+            and activity >= 0
+        then
             local sequence = self:SelectWeightedSequence(activity)
 
             MarkExternalGesture(self, sequence)
