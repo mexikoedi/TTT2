@@ -36,7 +36,7 @@ end
 -- wrap this once to track externally started gestures on all slots while ignoring TTT2 internal writes
 if
     not plymeta._ttt2WrappedAddVCDSequenceToGestureSlot
-    and isfunction(plymeta.AddVCDSequenceToGestureSlot) 
+    and isfunction(plymeta.AddVCDSequenceToGestureSlot)
 then
     plymeta._ttt2WrappedAddVCDSequenceToGestureSlot = true
 
@@ -52,10 +52,7 @@ then
     end
 end
 
-if
-    not plymeta._ttt2WrappedAnimRestartGesture
-    and isfunction(plymeta.AnimRestartGesture) 
-then
+if not plymeta._ttt2WrappedAnimRestartGesture and isfunction(plymeta.AnimRestartGesture) then
     plymeta._ttt2WrappedAnimRestartGesture = true
 
     local plymeta_old_AnimRestartGesture = plymeta.AnimRestartGesture
